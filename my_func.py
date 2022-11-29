@@ -5,20 +5,24 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
+import matplotlib.pyplot as plt
 
 def my_train(model, num_epochs, train_loader, criterion, optimizer, device):
-        for epoch in range(num_epochs):
-            for batch_idx, (data, targets) in enumerate(train_loader):
-                data = data.to(device = device)
-                targets = targets.to(device = device)
-                scores = model(data)
-                loss = criterion(scores, targets)
+    accuracy = [0 for x in range(num_epochs)]
+    n = range(num_epochs)
+    for epoch in range(num_epochs):
+        for batch_idx, (data, targets) in enumerate(train_loader):
+            data = data.to(device = device)
+            targets = targets.to(device = device)
+            scores = model(data)
+            loss = criterion(scores, targets)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        #check_STLaccuracy(train_loader, model, device)
+        accuracy[epoch] = epoch_accuracy(train_loader, model, device, epoch)
+    plt.plot(n, accuracy)
 
-                optimizer.zero_grad()
-                loss.backward()
-
-                optimizer.step()
-            
 def check_accuracy(loader, model, device):
     if loader.dataset.train:
         print("Checking accuracy on the training data")
@@ -39,7 +43,7 @@ def check_accuracy(loader, model, device):
             num_correct += (predictions == y).sum()
             num_samples += predictions.size(0)
 
-        print(f'Got {num_correct} / {num_samples} with accuracy {float(num_correct)/float(num_samples)*100:.2f}')
+        print(f'Got {num_correct} / {num_samples} with accuracy {float(num_correct)/float(num_samples)*100:.2f}%')
 
     model.train()
 
@@ -66,6 +70,24 @@ def check_STLaccuracy(loader, model, device):
         print(f'Got {num_correct} / {num_samples} with accuracy {float(num_correct)/float(num_samples)*100:.2f}')
 
     model.train()
+
+def epoch_accuracy(loader, model, device, epoch):
+    num_correct = 0
+    num_samples = 0
+    model.eval()
+
+    with torch.no_grad():
+        for x, y in loader:
+            x = x.to(device = device)
+            y = y.to(device = device)
+
+            scores = model(x)
+            _, predictions = scores.max(1)
+            num_correct += (predictions == y).sum()
+            num_samples += predictions.size(0)
+        #plt.plot(num_correct.item()/num_samples, epoch+1)
+    model.train()
+    return num_correct.item()/num_samples
 
 
 
